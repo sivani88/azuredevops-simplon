@@ -1,0 +1,79 @@
+name: Infra-Deployment
+trigger: none
+
+variables:
+  azureSubscription: "sc-azuredevops-deploymentdamm-prod-frc-001"
+  subscriptionId: ""
+  resourceGroup: "az-rg-deployment-02"
+  location: "northeurope"
+  templateFilePath: "ci-cd-pipeline/azuredeploybis.json"
+  parametersFilePath: "ci-cd-pipeline/azuredeploybis.parameters.json"
+
+pool:
+  name: "deployment-agent-test"
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          # Étape pour inclure les modèles d'infrastructure dans l'artefact
+          - task: CopyFiles@2
+            displayName: "Include Infrastructure Templates in the artifact"
+            inputs:
+              SourceFolder: "$(System.DefaultWorkingDirectory)/ci-cd-pipeline" # Répertoire source contenant les fichiers
+              Contents: |
+                azuredeploybis.json
+                azuredeploybis.parameters.json
+              TargetFolder: "$(Build.ArtifactStagingDirectory)"
+
+          # Étape pour lister les fichiers dans le répertoire cible
+          - script: |
+              echo "Listing files in $(Build.ArtifactStagingDirectory):"
+              ls -al $(Build.ArtifactStagingDirectory)
+            displayName: "List files in artifact directory"
+
+          # Étape pour publier les artefacts de build
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish artifact"
+            inputs:
+              PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+              ArtifactName: "drop"
+              publishLocation: "Container"
+
+  - stage: Deploy
+    jobs:
+      - job: DeployResources
+        pool:
+          name: "deployment-agent-prod"
+        steps:
+          # Étape pour télécharger l'artefact de build
+          - task: DownloadBuildArtifacts@0
+            displayName: "Download artifact"
+            inputs:
+              buildType: "current"
+              downloadType: "single"
+              artifactName: "drop"
+              downloadPath: "$(System.ArtifactsDirectory)"
+
+          # Étape pour lister les fichiers dans le répertoire de téléchargement
+          - script: |
+              echo "Listing files in $(System.ArtifactsDirectory)/drop:"
+              ls -al $(System.ArtifactsDirectory)/drop
+            displayName: "List files in download directory"
+
+          # Étape pour déployer l'infrastructure avec le modèle ARM
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: "Deploy Infrastructure Resources"
+            inputs:
+              deploymentScope: "Resource Group"
+              azureResourceManagerConnection: "$(azureSubscription)"
+              subscriptionId: "$(subscriptionId)"
+              action: "Create Or Update Resource Group"
+              resourceGroupName: "$(resourceGroup)"
+              location: "$(location)"
+              templateLocation: "Linked artifact"
+              csmFile: "$(System.ArtifactsDirectory)/drop/azuredeploybis.json"
+              csmParametersFile: "$(System.ArtifactsDirectory)/drop/azuredeploybis.parameters.json"
+              deploymentMode: "Incremental"
+              deploymentName: "Infra-Deployment"

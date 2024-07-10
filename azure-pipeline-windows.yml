@@ -1,0 +1,87 @@
+# Nom de la pipeline
+name: Infra-Deployment-Windows
+trigger: none # La pipeline ne se déclenche pas automatiquement
+
+# Définition des variables
+variables:
+  azureSubscription: "" # Connexion à l'abonnement Azure
+  subscriptionId: "" # ID de l'abonnement Azure
+  resourceGroup: "az-rg-deployment-03" # Nom du groupe de ressources pour la VM
+  fileShareResourceGroup: "az-rg-deployment-02" # Nom du groupe de ressources pour le partage de fichiers
+  location: "northeurope" # Emplacement des ressources
+  templateFilePath: "pipeline-windows/azuredeploy.json" # Chemin du fichier de modèle ARM
+  parametersFilePath: "pipeline-windows/azuredeploy.parameters.json" # Chemin du fichier de paramètres ARM
+  vmName: "win11vm" # Nom de la machine virtuelle Windows
+  storageAccountName: "azfirststorage001"
+  storageAccountKey: ""
+  fileShareName: "az-firstfileshare-prod-centralindia-001" # Nom du partage de fichiers Azure
+  localPath: "Z:" # Lettre de lecteur pour le montage du partage de fichiers
+
+# Définition du pool d'agents à utiliser
+pool:
+  name: "deployment-agent-test"
+
+# Définition des étapes de la pipeline
+stages:
+  - stage: Build # Première étape : Build
+    jobs:
+      - job: Build
+        steps:
+          # Étape pour inclure les modèles d'infrastructure dans l'artefact
+          - task: CopyFiles@2
+            displayName: "Inclure les modèles d'infrastructure dans l'artefact"
+            inputs:
+              SourceFolder: "$(System.DefaultWorkingDirectory)/pipeline-windows"
+              Contents: |
+                azuredeploy.json
+                azuredeploy.parameters.json
+              TargetFolder: "$(Build.ArtifactStagingDirectory)"
+
+          # Étape pour lister les fichiers dans le répertoire cible
+          - script: |
+              echo "Liste des fichiers dans $(Build.ArtifactStagingDirectory) :"
+              ls -al $(Build.ArtifactStagingDirectory)
+            displayName: "Lister les fichiers dans le répertoire des artefacts"
+
+          # Étape pour publier les artefacts de build
+          - task: PublishBuildArtifacts@1
+            displayName: "Publier l'artefact"
+            inputs:
+              PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+              ArtifactName: "drop"
+              publishLocation: "Container"
+
+  - stage: Deploy # Deuxième étape : Déploiement
+    jobs:
+      - job: Deploy
+        steps:
+          # Étape pour télécharger l'artefact de build
+          - task: DownloadBuildArtifacts@0
+            displayName: "Télécharger l'artefact"
+            inputs:
+              buildType: "current"
+              downloadType: "single"
+              artifactName: "drop"
+              downloadPath: "$(System.ArtifactsDirectory)"
+
+          # Étape pour lister les fichiers dans le répertoire de téléchargement
+          - script: |
+              echo "Liste des fichiers dans $(System.ArtifactsDirectory)/drop :"
+              ls -al $(System.ArtifactsDirectory)/drop
+            displayName: "Lister les fichiers dans le répertoire de téléchargement"
+
+          # Étape pour déployer l'infrastructure avec le modèle ARM
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: "Déployer l'infrastructure"
+            inputs:
+              deploymentScope: Resource Group
+              azureResourceManagerConnection: "$(azureSubscription)"
+              subscriptionId: "$(subscriptionId)"
+              action: "Create Or Update Resource Group"
+              resourceGroupName: "$(resourceGroup)"
+              location: "$(location)"
+              templateLocation: Linked artifact
+              csmFile: "$(System.ArtifactsDirectory)/drop/azuredeploy.json"
+              csmParametersFile: "$(System.ArtifactsDirectory)/drop/azuredeploy.parameters.json"
+              deploymentMode: Incremental
+              deploymentName: "Infra-Deployment-Windows"

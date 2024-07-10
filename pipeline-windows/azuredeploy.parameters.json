@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "northeurope"
+        },
+        "vmName": {
+            "value": "win11vm"
+        },
+        "adminUsername": {
+            "value": ""
+        },
+        "adminPassword": {
+            "value": ""
+        },
+        "vmSize": {
+            "value": "Standard_D2s_v3"
+        },
+        "vnetName": {
+            "value": "vnet-az-deployment-01"
+        },
+        "subnetName": {
+            "value": "subnet1"
+        },
+        "networkSecurityGroupName": {
+            "value": "nsg-az-deployment-northeurope-01"
+        }
+    }
+}

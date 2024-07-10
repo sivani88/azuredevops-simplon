@@ -1,0 +1,67 @@
+name: Infra-Deployment
+trigger: none
+
+variables:
+  azureSubscription: ""
+  subscriptionId: ""
+  resourceGroup: "az-rg-deployment-03"
+  location: "northeurope"
+  templateFilePath: "vnet/deploy.json" # Chemin vers le fichier de modèle ARM
+  parametersFilePath: "vnet/deploy.parameters.json" # Chemin vers le fichier de paramètres ARM
+
+pool:
+  name: "deployment-agent-test" # Utilisation de l'agent auto-hébergé nommé "deployment-agent-test"
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          # Étape pour inclure les modèles d'infrastructure dans l'artefact
+          - task: CopyFiles@2
+            displayName: "Include Infrastructure Templates in the artifact"
+            inputs:
+              SourceFolder: "$(System.DefaultWorkingDirectory)/vnet" # Répertoire source contenant les fichiers
+              Contents: |
+                deploy.json
+                deploy.parameters.json
+              TargetFolder: "$(Build.ArtifactStagingDirectory)" # Répertoire cible où les fichiers seront copiés
+
+          # Étape pour publier les artefacts de build
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish artifact"
+            inputs:
+              PathtoPublish: "$(Build.ArtifactStagingDirectory)" # Chemin des artefacts à publier
+              ArtifactName: "drop" # Nom de l'artefact
+              publishLocation: "Container" # Emplacement de publication de l'artefact
+
+  - stage: Deploy
+    dependsOn: Build
+    jobs:
+      - job: DeployResources
+        pool:
+          name: "deployment-agent-test"
+        steps:
+          # Étape pour télécharger l'artefact de build
+          - task: DownloadBuildArtifacts@0
+            displayName: "Download artifact"
+            inputs:
+              buildType: "current" # Type de build à télécharger
+              downloadType: "single" # Type de téléchargement (unique)
+              artifactName: "drop" # Nom de l'artefact à télécharger
+              downloadPath: "$(System.ArtifactsDirectory)" # Chemin de téléchargement
+
+          # Étape pour déployer l'infrastructure avec le modèle ARM
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: "Deploy Infrastructure"
+            inputs:
+              deploymentScope: "Resource Group" # Portée du déploiement (groupe de ressources)
+              azureResourceManagerConnection: "$(azureSubscription)" # Connexion au gestionnaire de ressources Azure
+              subscriptionId: "$(subscriptionId)" # ID de l'abonnement
+              resourceGroupName: "$(resourceGroup)" # Nom du groupe de ressources
+              location: "$(location)" # Emplacement des ressources
+              templateLocation: "Linked artifact" # Emplacement du modèle ARM
+              csmFile: "$(System.ArtifactsDirectory)/drop/deploy.json" # Chemin vers le fichier de modèle ARM
+              csmParametersFile: "$(System.ArtifactsDirectory)/drop/deploy.parameters.json" # Chemin vers le fichier de paramètres ARM
+              deploymentMode: "Incremental" # Mode de déploiement (incrémental)
+              deploymentName: "Infra-Deployment" # Nom du déploiement

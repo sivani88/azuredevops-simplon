@@ -1,0 +1,64 @@
+# Nom de la pipeline
+name: Infra-Deployment-Windows
+trigger: none # La pipeline ne se déclenche pas automatiquement
+
+# Définition des variables
+variables:
+  azureSubscription: "" # Connexion à l'abonnement Azure
+  subscriptionId: "" # ID de l'abonnement Azure
+  resourceGroup: "az-rg-deployment-03" # Nom du groupe de ressources pour la VM
+  fileShareResourceGroup: "az-rg-deployment-02" # Nom du groupe de ressources pour le partage de fichiers
+  location: "northeurope" # Emplacement des ressources
+  vmName: "win11vm" # Nom de la machine virtuelle Windows
+  storageAccountName: "azfirststorage001"
+  storageAccountKey: ""
+  fileShareName: "az-firstfileshare" # Nom du partage de fichiers Azure
+  localPath: "Z:" # Lettre de lecteur pour le montage du partage de fichiers
+  adminUsername: "" # Nom d'utilisateur administrateur
+  adminPassword: "" # Mot de passe administrateur
+
+pool:
+  vmImage: "windows-latest"
+
+steps:
+  - checkout: self
+    displayName: "Checkout repository"
+
+  - script: |
+      Write-Host "PWD avant la copie des fichiers:"
+      pwd
+    displayName: "Afficher le répertoire de travail avant la copie des fichiers"
+
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: "$(Build.SourcesDirectory)/script"
+      contents: "mountFileShare.ps1"
+      targetFolder: "$(Build.ArtifactStagingDirectory)/script"
+    displayName: "Copier le script mountFileShare.ps1 dans le répertoire des artefacts"
+
+  - script: |
+      Write-Host "PWD après la copie des fichiers:"
+      pwd
+      Write-Host "Contenu du répertoire $(Build.ArtifactStagingDirectory)/script :"
+      Get-ChildItem "$(Build.ArtifactStagingDirectory)/script"
+    displayName: "Vérifier le répertoire des artefacts après la copie des fichiers"
+
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(azureSubscription)
+      scriptType: "pscore"
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        Write-Host "PWD avant l'invocation de la commande CLI Azure:"
+        pwd
+        Write-Host "Contenu du répertoire des artefacts avant l'invocation de la commande CLI Azure:"
+        Get-ChildItem "$(Build.ArtifactStagingDirectory)/script"
+        # Copie du script PowerShell dans la VM
+        az vm run-command invoke --command-id RunPowerShellScript --name $(vmName) -g $(resourceGroup) --scripts "New-Item -ItemType Directory -Force -Path C:\Script; Set-Content -Path C:\Script\mountFileShare.ps1 -Value '$(Get-Content $(Build.ArtifactStagingDirectory)/script/mountFileShare.ps1 -Raw)'"
+        Write-Host "PWD après l'invocation de la commande CLI Azure pour copier le script:"
+        pwd
+        # Exécution du script PowerShell dans la VM
+        az vm run-command invoke --command-id RunPowerShellScript --name $(vmName) -g $(resourceGroup) --scripts "powershell.exe -ExecutionPolicy Unrestricted -File C:\Script\mountFileShare.ps1"
+        Write-Host "PWD après l'invocation de la commande CLI Azure pour exécuter le script:"
+        pwd
+    displayName: "Exécuter le script PowerShell pour monter le partage de fichiers Azure sur la VM Windows"

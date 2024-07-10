@@ -1,0 +1,104 @@
+
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "location": {
+                "type": "string",
+                "defaultValue": "northeurope"
+            
+            },
+            "existingStorageAccountName": {
+                "type": "string",
+                "defaultValue": "az-firststorage-001"
+            
+            }
+        },
+        "resources": [{
+        "type": "Microsoft.Authorization/policyDefinitions",
+        "apiVersion": "2019-06-01",
+        "name": "[parameters('existingStorageAccountName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+            "displayName": "Enable Defender for Storage",
+            "policyType": "Custom",
+            "mode": "Indexed",
+            "description": "This policy ensures that Defender for Storage is enabled for all storage accounts.",
+            "parameters": {
+                "StorageAccountName": {
+                    "type": "String",
+                    "metadata": {
+                        "displayName": "Storage Account Name",
+                        "description": "Name of the Storage Account."
+                    }
+                },
+                "Location": {
+                    "type": "String",
+                    "metadata": {
+                        "displayName": "Location",
+                        "description": "Location for the Storage Account."
+                    }
+                }
+            },
+            "policyRule": {
+                "if": {
+                    "field": "type",
+                    "equals": "Microsoft.Storage/storageAccounts"
+                },
+                "then": {
+                    "effect": "deployIfNotExists",
+                    "details": {
+                        "type": "Microsoft.Storage/storageAccounts/providers/Microsoft.Security/DefenderForStorageSettings",
+                        "roleDefinitionIds": [
+                            "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+                        ],
+                        "scope": "[resourceGroup().id]",
+                        "existenceCondition": {
+                            "allOf": [
+                                {
+                                    "field": "Microsoft.Security/DefenderForStorageSettings.isEnabled",
+                                    "equals": "true"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Authorization/policyDefinitions",
+        "apiVersion": "2021-06-01",
+        "name": "enforce-single-location",
+        "properties": {
+            "displayName": "Enforce Single Allowed Location",
+            "policyType": "Custom",
+            "mode": "All",
+            "description": "This policy ensures that resources can only be created in the location provided by the policy parameter.",
+            "parameters": {
+                "location": {
+                    "type": "String",
+                    "metadata": {
+                        "displayName": "Allowed Location",
+                        "description": "The location where resources can be created.",
+                        "strongType": "location"
+                    }
+                }
+            },
+            "policyRule": {
+                "if": {
+                    "not": {
+                        "field": "location",
+                        "equals": "[parameters('location')]",
+                        "scope": "[resourceGroup().id]"
+                    }
+                },
+                "then": {
+                    "effect": "deny"
+                }
+            }
+        }
+        
+    }
+    ]
+    }

@@ -1,0 +1,46 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "northeurope"
+        },
+        "VnetAVDName": {
+            "value": "vnet-az-deployment-01"
+        },
+        "VnetAVDaddressPrefixes": {
+            "value": ["10.1.0.0/16"]
+        },
+        "VnetAVDsubnets": {
+            "value": [
+                {
+                  "name": "subnet-az-deployment_01",
+                  "properties": {
+                    "addressPrefix": "10.1.0.0/24"
+                  }
+                }
+            ]
+        },
+        "VnetDNS": {
+            "value": [
+                "8.8.8.8",
+                "8.8.4.4"
+            ]
+        },
+        "VnetAVDnsgid": {
+            "value": "/subscriptions/"
+        },
+        "PeeringAVDtoName": {
+            "value": "peering-vnet1-to-vnet2-01"
+        },
+        "PeeringRemoteVnetToAVD": {
+            "value": "peering-vnet2-to-vnet1-01"
+        },
+        "RemotePeeringVnetRG": {
+            "value": "az-rg-deployment-03"
+        },
+        "RemotePeeringVnetName": {
+            "value": "vnet-az-deployment-02"
+        }
+    }
+}

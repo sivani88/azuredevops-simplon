@@ -1,0 +1,563 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+
+         "location": {
+            "type": "string",
+            "defaultValue": "northeurope"
+        },
+        "workspaceName": {
+            "type": "string",
+             "defaultValue": "az-workspace-prod-northeurope-001",
+            "metadata": {
+                "description": "The name of the Log Analytics Workspace."
+            }
+        },
+         "deployVpnGateway": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Specify if a VPN Gateway should be deployed"
+            }
+        },
+
+        "workspaceSku": {
+            "type": "string",
+            "defaultValue": "PerGB2018",
+            "allowedValues": [
+                "Free",
+                "Standard",
+                "Premium",
+                "PerNode",
+                "PerGB2018",
+                "Standalone"
+            ],
+            "metadata": {
+                "description": "The SKU of the workspace."
+            }
+        },
+        "retentionInDays": {
+            "type": "int",
+            "defaultValue": 30,
+            "minValue": 7,
+            "maxValue": 730,
+            "metadata": {
+                "description": "The data retention in days for the workspace."
+            }
+        },
+        "privateEndpointName": {
+            "type": "string",
+            "defaultValue": "az-pe-prod-northeurope-001",
+            "metadata": {
+                "description": "Name of the private endpoint"
+            }
+        },
+        "privateLinkServiceConnectionName": {
+            "type": "string",
+             "defaultValue": "az-plsc-prod-northeurope-001",
+            "metadata": {
+                "description": "Name of the private link service connection"
+            }
+        },
+        "vnetName": {
+            "type": "string",
+             "defaultValue": "devSpokeVnetName",
+            "metadata": {
+                "description": "Name of the VNet"
+            }
+        },
+        "diagnosticSettingName": {
+            "type": "string",
+            "defaultValue": "az-ds-prod-northeurope-001",
+            "metadata": {
+                "description": "The name of the diagnostic setting."
+            }
+        },
+        "existingVaultName": {
+            "type": "string",
+            "defaultValue": "az-firstvault-prod-northeurope-001",
+            "metadata": {
+                "description": "Name of the Recovery Services Vault"
+            }
+        },
+
+        "existingFileShareName": {
+            "type": "string",
+            "maxLength": 63,
+            "minLength": 3,
+            "defaultValue": "az-firstfileshare-prod-northeurope-001",
+            "metadata": {
+                "description": "Specifies the name of the File Share. File share names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
+            }
+        },
+
+        "existingStorageAccountName": {
+            "type": "string",
+            "defaultValue":  "azfirststorage001",
+            "metadata": {
+                "description": "Specifies the name of the Azure Storage account."
+            }
+        },
+
+        "existingResourceGroupName": {
+            "type": "string",
+            "defaultValue": "az-firststorage-001",
+            "metadata": {
+                "description": "Name of the existing Resource Group in which the existing Storage Account is present."
+            }
+        },
+        "isNewVault": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Set to true if a new Recovery Services Vault is to be created; set to false otherwise."
+            }
+        },
+        "isNewPolicy": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Set to true if a new Backup Policy is to be created for the Recovery Services Vault; set to false otherwise."
+            }
+        },
+          "gatewaySku": {
+        "type": "string",
+        "defaultValue": "VpnGw1",
+        "allowedValues": [
+            "Basic",
+            "VpnGw1",
+            "VpnGw2",
+            "VpnGw3",
+            "VpnGw4",
+            "VpnGw5"
+        ],
+        "metadata": {
+            "description": "The SKU of the VPN Gateway."
+        }
+    },
+        "registerStorageAccount": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Set to true if the existing Storage Account has to be registered to the Recovery Services Vault; set to false otherwise."
+            }
+        },
+        "vaultName": {
+            "type": "string",
+            "defaultValue": "az-vault-prod-northeurope-001",
+            "metadata": {
+                "description": "Name of the Recovery Services Vault. (Should have the same location as the Storage Account containing the File Share to be protected in case of an existing Recovery Services Vault)."
+            }
+        },
+        "policyName": {
+            "type": "string",
+            "defaultValue": "DailyBackupPolicy1",
+            "metadata": {
+                "description": "Name of the Backup Policy."
+            }
+        },
+        "scheduleRunTime": {
+            "type": "string",
+            "defaultValue": "05:30",
+            "metadata": {
+                "description": "Time of day when backup should be triggered in 24 hour HH:MM format, where MM must be 00 or 30. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "timeZone": {
+            "type": "string",
+            "defaultValue": "UTC",
+            "metadata": {
+                "description": "Any valid timezone, for example: UTC, Pacific Standard Time. Refer: https://msdn.microsoft.com/en-us/library/gg154758.aspx (Ignore if using existing Backup Policy)."
+            }
+        },
+        "dailyRetentionDurationCount": {
+            "type": "int",
+            "defaultValue": 30,
+            "metadata": {
+                "description": "Number of days for which the daily backup is to be retained. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "daysOfTheWeek": {
+            "type": "array",
+            "defaultValue": [
+                "Sunday",
+                "Tuesday",
+                "Thursday"
+            ],
+            "metadata": {
+                "description": "Array of days on which backup is to be performed for Weekly Retention. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "weeklyRetentionDurationCount": {
+            "type": "int",
+            "defaultValue": 12,
+            "metadata": {
+                "description": "Number of weeks for which the weekly backup is to be retained. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "monthlyRetentionDurationCount": {
+            "type": "int",
+            "defaultValue": 60,
+            "metadata": {
+                "description": "Number of months for which the monthly backup is to be retained. Backup will be performed on the 1st day of every month. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "monthsOfYear": {
+            "type": "array",
+            "defaultValue": [
+                "January",
+                "May",
+                "September"
+            ],
+            "metadata": {
+                "description": "Array of months on which backup is to be performed for Yearly Retention. Backup will be performed on the 1st day of each month of year provided. (Ignore if using existing Backup Policy)."
+            }
+        },
+        "yearlyRetentionDurationCount": {
+            "type": "int",
+            "defaultValue": 10,
+            "metadata": {
+                "description": "Number of years for which the yearly backup is to be retained. (Ignore if using existing Backup Policy)."
+            }
+        }
+
+
+    },
+
+    "variables": {
+        "vnet1Config": {
+      "addressSpacePrefix": "10.0.0.0/24",
+      "subnetName": "subnet1",
+      "subnetPrefix": "10.0.0.0/24"
+    },
+    "vnet2Config": {
+      "addressSpacePrefix": "192.168.0.0/24",
+      "subnetName": "subnet1",
+      "subnetPrefix": "192.168.0.0/24"
+    },
+  
+      "hubVnetName": "hubVnet",
+      "hubVnetPrefix": "192.168.0.0/20",
+      "dmzSubnetName": "DMZSubnet",
+      "dmzSubnetPrefix": "192.168.0.0/25",
+      "mgmtSubnetName": "ManagementSubnet",
+      "mgmtSubnetPrefix": "192.168.1.0/24",
+      "sharedSubnetName": "SharedSubnet",
+      "sharedSubnetPrefix": "192.168.4.0/22",
+      "gatewaySubnetName": "GatewaySubnet",
+      "gatewaySubnetPrefix": "192.168.15.224/27",
+      "gatewayName": "hubVpnGateway",
+      "gatewayPIPName": "hubVpnGatewayPublicIp",
+      "subnetGatewayId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('hubVnetName'), variables('gatewaySubnetName'))]",
+      "winJmphostName": "winJmphostVm",
+      "devSpokeVnetName": "spokeDevVnet",
+      "devSpokeVnetPrefix": "10.10.0.0/16",
+      "prodSpokeVnetName": "spokeProdVnet",
+      "prodSpokeVnetPrefix": "10.100.0.0/16",
+      "spokeWorkloadSubnetName": "WorkloadSubnet",
+      "devSpokeWorkloadSubnetPrefix": "10.10.0.0/16",
+      "prodSpokeWorkloadSubnetPrefix": "10.100.0.0/16",
+      "hubID": "[resourceId('Microsoft.Network/virtualNetworks/', variables('hubVnetName'))]",
+      "devSpokeID": "[resourceId('Microsoft.Network/virtualNetworks/', variables('devSpokeVnetName'))]",
+      "prodSpokeID": "[resourceId('Microsoft.Network/virtualNetworks/', variables('prodSpokeVnetName'))]",
+      "winVmNicName": "[concat(variables('winJmphostName'), 'NIC')]",
+      "winVmStorageName": "[concat('hubwinvm',uniquestring(resourceGroup().id))]",
+      "winNsgName": "winJmpHostNsg",
+      "winJmphostPublicIpName": "winJmphostVmPublicIp",
+
+    
+        "subnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('devSpokeVnetName'), variables('spokeWorkloadSubnetName'))]",
+        "fileShareResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]",
+        "vnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/', variables('devSpokeVnetName'))]",
+       
+        "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]",
+        "backupFabric": "Azure",
+        "backupManagementType": "AzureStorage",
+        "scheduleRunTimes": [
+            "[format('2020-01-01T{0}:00Z', parameters('scheduleRunTime'))]"
+        ]
+    },
+    "resources": [
+        
+
+
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-04-01",
+            "name": "[parameters('existingStorageAccountName')]",
+            "location": "[parameters('location')]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "properties": {
+                "accessTier": "Hot"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+            "apiVersion": "2021-04-01",
+            "name": "[format('{0}/default/{1}', parameters('existingStorageAccountName'), parameters('existingFileShareName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('privateEndpointName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "subnet": {
+                    "id": "[variables('subnetResourceId')]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateLinkServiceConnectionName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[variables('fileShareResourceId')]",
+                            "groupIds": [
+                                "file"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "privatelink.file.core.windows.net",
+            "location": "global",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat('privatelink.file.core.windows.net/', parameters('vnetName'))]",
+            "location": "global",
+            "dependsOn": [
+                "privatelink.file.core.windows.net"
+            ],
+            "properties": {
+                "virtualNetwork": {
+                    "id": "[variables('vnetResourceId')]"
+                },
+                "registrationEnabled": false
+            }
+        },
+        {
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "apiVersion": "2020-08-01",
+            "name": "[parameters('workspaceName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "sku": {
+                    "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                    "searchVersion": 1,
+                    "legacy": 0
+                },
+                "workspaceCapping": {
+                    "dailyQuotaGb": -1
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/providers/diagnosticSettings",
+            "apiVersion": "2017-05-01-preview",
+            "name": "[concat(parameters('existingStorageAccountName'), '/default/Microsoft.Insights/', parameters('diagnosticSettingName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+            ],
+            "properties": {
+                "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+                "logs": [
+                    {
+                        "category": "StorageRead",
+                        "enabled": true,
+                        "retentionPolicy": {
+                            "enabled": false,
+                            "days": 0
+                        }
+                    },
+                    {
+                        "category": "StorageWrite",
+                        "enabled": true,
+                        "retentionPolicy": {
+                            "enabled": false,
+                            "days": 0
+                        }
+                    },
+                    {
+                        "category": "StorageDelete",
+                        "enabled": true,
+                        "retentionPolicy": {
+                            "enabled": false,
+                            "days": 0
+                        }
+                    }
+                ],
+                "metrics": [
+                    {
+                        "category": "Transaction",
+                        "enabled": true,
+                        "retentionPolicy": {
+                            "enabled": false,
+                            "days": 0
+                        }
+                    }
+                ]
+            }
+        },
+  
+        {
+            "type": "Microsoft.RecoveryServices/vaults",
+            "apiVersion": "2016-06-01",
+            "name": "[parameters('existingVaultName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {}
+        },
+        {
+            "condition": "[parameters('isNewVault')]",
+            "type": "Microsoft.RecoveryServices/vaults",
+            "apiVersion": "2021-12-01",
+            "name": "[parameters('vaultName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "RS0",
+                "tier": "Standard"
+            },
+            "properties": {}
+        },
+        {
+            "condition": "[parameters('isNewPolicy')]",
+            "type": "Microsoft.RecoveryServices/vaults/backupPolicies",
+            "apiVersion": "2021-12-01",
+            "name": "[format('{0}/{1}', parameters('vaultName'), parameters('policyName'))]",
+            "properties": {
+                "backupManagementType": "[variables('backupManagementType')]",
+                "schedulePolicy": {
+                    "scheduleRunFrequency": "Daily",
+                    "scheduleRunTimes": "[variables('scheduleRunTimes')]",
+                    "schedulePolicyType": "SimpleSchedulePolicy"
+                },
+                "retentionPolicy": {
+                    "dailySchedule": {
+                        "retentionTimes": "[variables('scheduleRunTimes')]",
+                        "retentionDuration": {
+                            "count": "[parameters('dailyRetentionDurationCount')]",
+                            "durationType": "Days"
+                        }
+                    },
+                    "weeklySchedule": {
+                        "daysOfTheWeek": "[parameters('daysOfTheWeek')]",
+                        "retentionTimes": "[variables('scheduleRunTimes')]",
+                        "retentionDuration": {
+                            "count": "[parameters('weeklyRetentionDurationCount')]",
+                            "durationType": "Weeks"
+                        }
+                    },
+                    "monthlySchedule": {
+                        "retentionScheduleFormatType": "Daily",
+                        "retentionScheduleDaily": {
+                            "daysOfTheMonth": [
+                                {
+                                    "date": 1,
+                                    "isLast": false
+                                }
+                            ]
+                        },
+                        "retentionTimes": "[variables('scheduleRunTimes')]",
+                        "retentionDuration": {
+                            "count": "[parameters('monthlyRetentionDurationCount')]",
+                            "durationType": "Months"
+                        }
+                    },
+                    "yearlySchedule": {
+                        "retentionScheduleFormatType": "Daily",
+                        "monthsOfYear": "[parameters('monthsOfYear')]",
+                        "retentionScheduleDaily": {
+                            "daysOfTheMonth": [
+                                {
+                                    "date": 1,
+                                    "isLast": false
+                                }
+                            ]
+                        },
+                        "retentionTimes": "[variables('scheduleRunTimes')]",
+                        "retentionDuration": {
+                            "count": "[parameters('yearlyRetentionDurationCount')]",
+                            "durationType": "Years"
+                        }
+                    },
+                    "retentionPolicyType": "LongTermRetentionPolicy"
+                },
+                "timeZone": "[parameters('timeZone')]",
+                "workLoadType": "AzureFileShare"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]",
+                "[resourceId('Microsoft.RecoveryServices/vaults', parameters('vaultName'))]"
+            ]
+        },
+        {
+      "condition": "[parameters('registerStorageAccount')]",
+      "type": "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers",
+      "apiVersion": "2021-12-01",
+      "name": "[format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName'))]",
+      "properties": {
+        "backupManagementType": "[variables('backupManagementType')]",
+        "containerType": "StorageContainer",
+        "sourceResourceId": "[resourceId(parameters('existingResourceGroupName'), 'Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.RecoveryServices/vaults', parameters('vaultName'))]"
+      ]
+    },
+
+        {
+            "type": "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems",
+            "apiVersion": "2021-12-01",
+            "name": "[format('{0}/{1}/{2}/{3}', split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[0], split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[1], split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[2], format('AzureFileShare;{0}', parameters('existingFileShareName')))]",
+            "properties": {
+                "protectedItemType": "AzureFileShareProtectedItem",
+                "sourceResourceId": "[resourceId(parameters('existingResourceGroupName'), 'Microsoft.Storage/storageAccounts', parameters('existingStorageAccountName'))]",
+                "policyId": "[resourceId('Microsoft.RecoveryServices/vaults/backupPolicies', parameters('vaultName'), parameters('policyName'))]",
+                "isInlineInquiry": true
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.RecoveryServices/vaults/backupPolicies', parameters('vaultName'), parameters('policyName'))]",
+                "[resourceId('Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers', split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[0], split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[1], split(format('{0}/{1}/storagecontainer;Storage;{2};{3}', parameters('vaultName'), variables('backupFabric'), parameters('existingResourceGroupName'), parameters('existingStorageAccountName')), '/')[2])]",
+                "[resourceId('Microsoft.RecoveryServices/vaults', parameters('vaultName'))]"
+            ]
+        }
+
+
+
+    ],
+    "outputs": {
+        "resourceGroupName": {
+            "type": "string",
+            "value": "[resourceGroup().name]"
+        },
+        "storageAccountName": {
+            "type": "string",
+            "value": "[parameters('existingStorageAccountName')]"
+        },
+        "fileShareName": {
+            "type": "string",
+            "value": "[parameters('existingFileShareName')]"
+        },
+        "storageAccountLocation": {
+            "type": "string",
+            "value": "[parameters('location')]"
+        }
+    }
+}

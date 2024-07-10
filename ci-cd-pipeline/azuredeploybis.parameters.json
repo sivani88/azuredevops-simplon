@@ -1,0 +1,91 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+       "workspaceName": {
+            "value": "az-workspace-prod-northeurope-001"
+        },
+         "location": {
+            "value": "northeurope"
+        },
+        "workspaceSku": {
+            "value": "PerGB2018"
+        },
+        "retentionInDays": {
+            "value": 30
+        },
+        "privateEndpointName": {
+            "value": "az-pe-prod-northeurope-001"
+        },
+        "privateLinkServiceConnectionName": {
+            "value": "az-plsc-prod-ce-northeurope-001"
+        },
+       
+        "diagnosticSettingName": {
+            "value": "az-ds-prod-northeurope-001"
+        },
+        "existingVaultName": {
+            "value": "az-firstvault-prod-northeurope-001"
+        },
+        "existingFileShareName": {
+            "value": "az-firstfileshare-prod-northeurope-001"
+        },
+        "existingStorageAccountName": {
+            "value": "azfirststorage001" 
+        },
+        "existingResourceGroupName": {
+            "value": "rg-azuredevops-deployment-02" 
+        },
+        "isNewVault": {
+            "value": true
+        },
+        "isNewPolicy": {
+            "value": true
+        },
+        "registerStorageAccount": {
+            "value": true
+        },
+        "vaultName": {
+            "value": "az-vault-prod-northeurope-001"
+        },
+        "policyName": {
+            "value": "DailyBackupPolicy1"
+        },
+        "scheduleRunTime": {
+            "value": "05:30"
+        },
+        "timeZone": {
+            "value": "UTC"
+        },
+        "dailyRetentionDurationCount": {
+            "value": 30
+        },
+        "daysOfTheWeek": {
+            "value": [
+              "Sunday",
+              "Tuesday",
+              "Thursday"
+            ]
+        },
+        "weeklyRetentionDurationCount": {
+            "value": 12
+        },
+        "monthlyRetentionDurationCount": {
+            "value": 60
+        },
+        "monthsOfYear": {
+            "value": [
+              "January",
+              "May",
+              "September"
+            ]
+        },
+        "yearlyRetentionDurationCount": {
+            "value": 10
+        }
+
+        
+       
+        
+    }
+}
